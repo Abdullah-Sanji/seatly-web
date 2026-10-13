@@ -1,0 +1,42 @@
+{
+  "name": "seatly-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.2",
+      "onFail": "download"
+    }
+  },
+  "dependencies": {
+    "axios": "^1.20.0",
+    "pinia": "^3.0.4",
+    "socket.io-client": "^4.8.4",
+    "vue": "^3.5.43",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@pinia/testing": "^1.0.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/test-utils": "^2.5.1",
+    "axios-mock-adapter": "^2.1.0",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.4",
+    "vitest": "^3.2.7",
+    "vue-tsc": "^2.2.12"
+  }
+}
