@@ -23,6 +23,14 @@ export function fromDetail(detail: EventDetail): SeatMapState {
   };
 }
 
+/** Rebuild from a fresh detail but keep the expiry times we already know for seats still held by us. */
+export function mergeDetail(prev: SeatMapState, detail: EventDetail): SeatMapState {
+  const next = fromDetail(detail);
+  if (prev.event?.id !== detail.id) return next;
+  const known = new Map(prev.mySeats.map((m) => [m.seatId, m.expiresAt]));
+  return { ...next, mySeats: next.mySeats.map((m) => ({ ...m, expiresAt: known.get(m.seatId) ?? null })) };
+}
+
 function setStates(
   state: SeatMapState,
   seatIds: string[],

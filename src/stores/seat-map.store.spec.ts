@@ -98,4 +98,52 @@ describe('seat map store', () => {
     store.onSocketMessage({ type: 'sales_opened' });
     expect(store.event?.status).toBe('on_sale');
   });
+
+  it('a failed toggle refetch keeps the countdown', async () => {
+    const store = useSeatMapStore();
+    await store.load('e1');
+    vi.mocked(bookingsApi.hold).mockResolvedValueOnce({ seatId: 's1', expiresAt: 'X' });
+    await store.toggle('s1');
+    const refreshed = detail();
+    refreshed.seats[0].state = 'held_by_me';
+    vi.mocked(eventsApi.get).mockResolvedValue(refreshed);
+    vi.mocked(bookingsApi.hold).mockRejectedValueOnce(new ApiError(409, 'SEAT_HELD', 'held', {}));
+    await store.toggle('s2');
+    expect(store.earliestExpiry).toBe('X');
+  });
+
+  it('overlapping actions are ignored', async () => {
+    const store = useSeatMapStore();
+    await store.load('e1');
+    let resolveHold: (v: { seatId: string; expiresAt: string }) => void = () => undefined;
+    vi.mocked(bookingsApi.hold).mockReturnValue(
+      new Promise((resolve) => {
+        resolveHold = resolve;
+      }),
+    );
+    const first = store.toggle('s1');
+    await store.toggle('s2');
+    expect(bookingsApi.hold).toHaveBeenCalledTimes(1);
+    resolveHold({ seatId: 's1', expiresAt: 'X' });
+    await first;
+    expect(store.busy).toBe(false);
+  });
+
+  it('a stale load response is discarded', async () => {
+    const store = useSeatMapStore();
+    const resolvers: ((d: EventDetail) => void)[] = [];
+    vi.mocked(eventsApi.get).mockImplementation(
+      () => new Promise<EventDetail>((resolve) => resolvers.push(resolve)),
+    );
+    const first = store.load('e1');
+    const second = store.load('e1');
+    const sold = detail();
+    sold.seats[0].state = 'sold';
+    resolvers[1](sold);
+    await second;
+    resolvers[0](detail());
+    await first;
+    expect(store.event?.seats[0].state).toBe('sold');
+    expect(store.loading).toBe(false);
+  });
 });

@@ -8,6 +8,7 @@ import {
   applySeatUpdate,
   earliestExpiry,
   fromDetail,
+  mergeDetail,
   totalCents,
 } from './seat-map.logic';
 
@@ -96,5 +97,22 @@ describe('seat-map reducers', () => {
     applySeatUpdate(before, { type: 'sold', seatIds: ['s1'] });
     applyHold(before, 's1', 'x');
     expect(JSON.stringify(before)).toBe(snapshot);
+  });
+
+  it('mergeDetail keeps known expiries for seats still held by me', () => {
+    const prev = applyHold(fromDetail(detail()), 's2', 'X');
+    const d = detail();
+    d.seats[0].state = 'held_by_me';
+    const merged = mergeDetail(prev, d);
+    expect(merged.mySeats).toEqual([
+      { seatId: 's1', expiresAt: null },
+      { seatId: 's2', expiresAt: 'X' },
+    ]);
+  });
+
+  it('mergeDetail returns a plain fromDetail for a different event', () => {
+    const prev = applyHold(fromDetail(detail()), 's2', 'X');
+    const d = { ...detail(), id: 'other' };
+    expect(mergeDetail(prev, d).mySeats).toEqual([{ seatId: 's2', expiresAt: null }]);
   });
 });
