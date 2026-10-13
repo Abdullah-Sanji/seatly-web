@@ -111,6 +111,9 @@ export const useSeatMapStore = defineStore('seatMap', () => {
   }
 
   function reset(): void {
+    loadSeq += 1; // discard any in-flight load
+    loading.value = false;
+    busy.value = false;
     state.value = emptyState();
     error.value = null;
     lastBooking.value = null;

@@ -35,6 +35,18 @@ describe('seat map store', () => {
     vi.mocked(bookingsApi.confirm).mockReset();
   });
 
+  it('reset discards an in-flight load', async () => {
+    let resolve!: (d: EventDetail) => void;
+    vi.mocked(eventsApi.get).mockReturnValue(new Promise<EventDetail>((r) => (resolve = r)));
+    const store = useSeatMapStore();
+    const pending = store.load('e1');
+    store.reset();
+    resolve(detail());
+    await pending;
+    expect(store.event).toBeNull();
+    expect(store.loading).toBe(false);
+  });
+
   it('toggle holds an available seat and releases a held-by-me seat', async () => {
     const store = useSeatMapStore();
     await store.load('e1');

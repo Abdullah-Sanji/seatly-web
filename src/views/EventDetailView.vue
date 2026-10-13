@@ -18,10 +18,11 @@ const eventId = computed(() => String(route.params.id));
 const gridDisabled = computed(() => map.event?.status !== 'on_sale' || map.loading || map.busy);
 
 let socket: EventSocket | null = null;
+let unmounted = false;
 
 function openSocket(): void {
   closeSocket();
-  if (!auth.accessToken) return;
+  if (unmounted || !auth.accessToken) return;
   socket = connectEventSocket({
     url: apiUrl(),
     token: auth.accessToken,
@@ -45,20 +46,28 @@ async function onToggle(seatId: string): Promise<void> {
 }
 
 onMounted(async () => {
-  await map.load(eventId.value);
   openSocket();
+  await map.load(eventId.value);
 });
 
-// Logging in/out on this page: reload (held_by_me depends on the bearer) and reconnect the socket.
+// Logging in/out on this page: reconnect the socket and reload (held_by_me depends on the bearer).
 watch(
   () => auth.accessToken,
   async () => {
-    await map.load(eventId.value);
     openSocket();
+    await map.load(eventId.value);
   },
 );
 
+// Vue Router reuses this component across /events/a -> /events/b.
+watch(eventId, async () => {
+  map.reset();
+  openSocket();
+  await map.load(eventId.value);
+});
+
 onBeforeUnmount(() => {
+  unmounted = true;
   closeSocket();
   map.reset();
 });
