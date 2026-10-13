@@ -29,6 +29,11 @@ function openSocket(): void {
     eventId: eventId.value,
     onMessage: (msg) => map.onSocketMessage(msg),
     onReconnect: () => void map.load(eventId.value),
+    // An expired token makes the server drop the socket and socket.io does not retry: refresh, then reopen.
+    onServerDisconnect: async () => {
+      await auth.refresh();
+      openSocket();
+    },
   });
 }
 
@@ -46,16 +51,26 @@ async function onToggle(seatId: string): Promise<void> {
 }
 
 onMounted(async () => {
+  await auth.ensureFresh();
   openSocket();
   await map.load(eventId.value);
 });
 
 // Logging in/out on this page: reconnect the socket and reload (held_by_me depends on the bearer).
 watch(
-  () => auth.accessToken,
+  () => auth.userId,
   async () => {
+    map.reset();
     openSocket();
     await map.load(eventId.value);
+  },
+);
+
+// A same-user token refresh must not reload (it could overwrite an in-flight hold): only update the socket auth.
+watch(
+  () => auth.accessToken,
+  (token) => {
+    if (token && socket) socket.updateToken(token);
   },
 );
 
@@ -85,7 +100,7 @@ onBeforeUnmount(() => {
           {{ map.event.venueName }} · {{ formatDateTime(map.event.startsAt) }} · {{ statusLabel(map.event.status) }}
         </p>
         <p v-if="map.event.status === 'upcoming'" class="mt-1 text-sm text-amber-700">
-          Sales open {{ formatDateTime(map.event.salesOpenAt) }}. This page updates automatically.
+          Sales open {{ formatDateTime(map.event.salesOpenAt) }}.<span v-if="auth.isAuthenticated"> This page updates automatically.</span>
         </p>
         <p v-if="!auth.isAuthenticated" class="mt-1 text-sm text-slate-500">
           Log in to hold seats and see live updates.

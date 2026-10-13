@@ -66,4 +66,26 @@ describe('auth store', () => {
     expect(ta).toBe(token('ada@x.com'));
     expect(tb).toBe(ta);
   });
+
+  it('ensureFresh refreshes a token that is about to expire', async () => {
+    const soon = `h.${btoa(JSON.stringify({ sub: 'u1', email: 'a@x.com', exp: Math.floor(Date.now() / 1000) + 10 })).replace(/=+$/, '')}.s`;
+    vi.mocked(authApi.refresh).mockResolvedValue(token('ada@x.com'));
+    const store = useAuthStore();
+    store.accessToken = soon;
+    expect(await store.ensureFresh()).toBe(token('ada@x.com'));
+    expect(authApi.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('ensureFresh returns a fresh token without refreshing', async () => {
+    const store = useAuthStore();
+    store.accessToken = token('ada@x.com');
+    expect(await store.ensureFresh()).toBe(token('ada@x.com'));
+    expect(authApi.refresh).not.toHaveBeenCalled();
+  });
+
+  it('ensureFresh does not call the API when logged out', async () => {
+    const store = useAuthStore();
+    expect(await store.ensureFresh()).toBeNull();
+    expect(authApi.refresh).not.toHaveBeenCalled();
+  });
 });

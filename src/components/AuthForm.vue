@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-const props = defineProps<{ submitLabel: string; busy: boolean; error: string | null }>();
+const props = defineProps<{
+  submitLabel: string;
+  busy: boolean;
+  error: string | null;
+  autocomplete: 'current-password' | 'new-password';
+}>();
 const emit = defineEmits<{ submit: [email: string, password: string] }>();
 
 const email = ref('');
@@ -25,9 +30,9 @@ function onSubmit(): void {
         v-model="password"
         type="password"
         required
-        minlength="8"
-        maxlength="72"
-        autocomplete="current-password"
+        :minlength="autocomplete === 'new-password' ? 8 : undefined"
+        :maxlength="autocomplete === 'new-password' ? 72 : undefined"
+        :autocomplete="autocomplete"
         class="rounded border px-3 py-2"
       />
     </label>

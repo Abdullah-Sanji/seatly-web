@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { authApi } from '@/api/auth.api';
-import { decodeJwtPayload } from '@/utils/jwt';
+import { decodeJwtPayload, tokenExpiresWithin } from '@/utils/jwt';
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null);
@@ -34,6 +34,14 @@ export const useAuthStore = defineStore('auth', () => {
     return inflight;
   }
 
+  /** Returns a token valid for at least 30 s more, refreshing first if needed; null when logged out. */
+  async function ensureFresh(): Promise<string | null> {
+    const token = accessToken.value;
+    // Logged out: nothing to refresh (bootstrap already tried the cookie).
+    if (!token || !tokenExpiresWithin(token, 30)) return token;
+    return refresh();
+  }
+
   /** Silent session restore via the httpOnly refresh cookie. Never throws: no cookie just means logged out. */
   async function bootstrap(): Promise<void> {
     try {
@@ -61,5 +69,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { accessToken, ready, isAuthenticated, email, userId, bootstrap, refresh, login, register, logout };
+  return { accessToken, ready, isAuthenticated, email, userId, bootstrap, refresh, ensureFresh, login, register, logout };
 });

@@ -47,8 +47,17 @@ describe('EventDetailView (anonymous)', () => {
   });
 });
 
+function jwt(sub: string, email = 'a@b.c'): string {
+  const payload = { sub, email, exp: Math.floor(Date.now() / 1000) + 3600 };
+  const b64 = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `h.${b64}.s`;
+}
+
+const TOKEN = jwt('u1');
+
 describe('EventDetailView socket lifecycle', () => {
   const close = vi.fn();
+  const updateToken = vi.fn();
 
   async function setup(token: string | null) {
     const router = createRouter({
@@ -67,7 +76,8 @@ describe('EventDetailView socket lifecycle', () => {
 
   beforeEach(() => {
     close.mockReset();
-    vi.mocked(connectEventSocket).mockReset().mockReturnValue({ close });
+    updateToken.mockReset();
+    vi.mocked(connectEventSocket).mockReset().mockReturnValue({ close, updateToken });
     vi.mocked(eventsApi.get).mockReset().mockResolvedValue(detail);
     vi.mocked(bookingsApi.hold).mockReset();
   });
@@ -79,11 +89,11 @@ describe('EventDetailView socket lifecycle', () => {
   });
 
   it('opens one socket when authenticated and closes it on unmount', async () => {
-    const { wrapper } = await setup('h.e30.s');
+    const { wrapper } = await setup(TOKEN);
     await flushPromises();
     expect(connectEventSocket).toHaveBeenCalledTimes(1);
     expect(connectEventSocket).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'http://localhost:3000', token: 'h.e30.s', eventId: 'e1' }),
+      expect.objectContaining({ url: 'http://localhost:3000', token: TOKEN, eventId: 'e1' }),
     );
     wrapper.unmount();
     expect(close).toHaveBeenCalledTimes(1);
@@ -92,7 +102,8 @@ describe('EventDetailView socket lifecycle', () => {
   it('never opens a socket after unmount, even if the load resolves late', async () => {
     let resolve!: (d: EventDetail) => void;
     vi.mocked(eventsApi.get).mockReturnValue(new Promise<EventDetail>((r) => (resolve = r)));
-    const { wrapper } = await setup('h.e30.s');
+    const { wrapper } = await setup(TOKEN);
+    await flushPromises(); // socket opened, load still pending
     wrapper.unmount();
     resolve(detail);
     await flushPromises();
@@ -101,7 +112,7 @@ describe('EventDetailView socket lifecycle', () => {
   });
 
   it('navigating away does not reload or reconnect', async () => {
-    const { router } = await setup('h.e30.s');
+    const { router } = await setup(TOKEN);
     await flushPromises();
     expect(eventsApi.get).toHaveBeenCalledTimes(1);
     expect(connectEventSocket).toHaveBeenCalledTimes(1);
@@ -113,7 +124,7 @@ describe('EventDetailView socket lifecycle', () => {
   });
 
   it('navigating to another event reloads and rejoins', async () => {
-    const { router } = await setup('h.e30.s');
+    const { router } = await setup(TOKEN);
     await flushPromises();
 
     await router.push('/events/e2');
@@ -122,5 +133,28 @@ describe('EventDetailView socket lifecycle', () => {
     expect(connectEventSocket).toHaveBeenCalledTimes(2);
     expect(connectEventSocket).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: 'e2' }));
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('a same-user token refresh does not reload or reconnect', async () => {
+    await setup(TOKEN);
+    await flushPromises();
+
+    const refreshed = jwt('u1', 'other@b.c');
+    useAuthStore().accessToken = refreshed;
+    await flushPromises();
+    expect(eventsApi.get).toHaveBeenCalledTimes(1);
+    expect(connectEventSocket).toHaveBeenCalledTimes(1);
+    expect(updateToken).toHaveBeenCalledWith(refreshed);
+  });
+
+  it('logging out reloads anonymously and closes the socket', async () => {
+    await setup(TOKEN);
+    await flushPromises();
+
+    useAuthStore().accessToken = null;
+    await flushPromises();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(eventsApi.get).toHaveBeenCalledTimes(2);
+    expect(connectEventSocket).toHaveBeenCalledTimes(1);
   });
 });

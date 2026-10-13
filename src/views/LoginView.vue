@@ -29,7 +29,7 @@ async function onSubmit(email: string, password: string): Promise<void> {
 <template>
   <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-semibold">Log in</h1>
-    <AuthForm submit-label="Log in" :busy="busy" :error="error" @submit="onSubmit" />
+    <AuthForm autocomplete="current-password" submit-label="Log in" :busy="busy" :error="error" @submit="onSubmit" />
     <p class="text-sm">
       No account?
       <RouterLink class="underline" :to="{ path: '/register', query: route.query }">Register</RouterLink>

@@ -25,3 +25,10 @@ export function decodeJwtPayload(token: string): JwtPayload | null {
     return null;
   }
 }
+
+/** True when the token cannot be decoded or expires within `seconds` from `now`. */
+export function tokenExpiresWithin(token: string, seconds: number, now = Date.now()): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+  return payload.exp * 1000 - now <= seconds * 1000;
+}

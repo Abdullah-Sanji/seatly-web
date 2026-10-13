@@ -4,6 +4,7 @@ class FakeSocket implements SocketLike {
   handlers = new Map<string, (payload: unknown) => void>();
   emitted: { event: string; payload: unknown }[] = [];
   disconnected = false;
+  auth?: { token: string } | ((cb: (data: object) => void) => void);
   on(event: string, handler: (payload: unknown) => void): this {
     this.handlers.set(event, handler);
     return this;
@@ -46,5 +47,39 @@ describe('connectEventSocket', () => {
 
     socket.close();
     expect(fake.disconnected).toBe(true);
+  });
+
+  it('reports server-initiated disconnects only', () => {
+    const fake = new FakeSocket();
+    const onServerDisconnect = vi.fn();
+    connectEventSocket({
+      url: 'http://api',
+      token: 'tok',
+      eventId: 'e1',
+      onMessage: vi.fn(),
+      onReconnect: vi.fn(),
+      onServerDisconnect,
+      createSocket: () => fake,
+    });
+
+    fake.fire('disconnect', 'transport close');
+    expect(onServerDisconnect).not.toHaveBeenCalled();
+    fake.fire('disconnect', 'io server disconnect');
+    expect(onServerDisconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('updateToken sets the auth used by future handshakes', () => {
+    const fake = new FakeSocket();
+    const socket = connectEventSocket({
+      url: 'http://api',
+      token: 'tok',
+      eventId: 'e1',
+      onMessage: vi.fn(),
+      onReconnect: vi.fn(),
+      createSocket: () => fake,
+    });
+
+    socket.updateToken('t2');
+    expect(fake.auth).toEqual({ token: 't2' });
   });
 });

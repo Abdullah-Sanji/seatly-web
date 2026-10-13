@@ -6,6 +6,8 @@ export interface SocketLike {
   on(event: string, handler: (payload: unknown) => void): this;
   emit(event: string, payload: unknown): this;
   disconnect(): this;
+  /** socket.io reads this on every (re)connect handshake. */
+  auth?: { token: string } | ((cb: (data: object) => void) => void);
 }
 
 export interface SocketOptions {
@@ -20,11 +22,15 @@ export interface EventSocketOptions {
   onMessage(msg: SeatUpdateMessage | SalesOpenedMessage): void;
   /** Called on the second and later connects: missed messages are not replayed, so refetch. */
   onReconnect(): void;
+  /** Called when the server drops the connection (e.g. expired token); socket.io will not auto-reconnect. */
+  onServerDisconnect?(): void;
   createSocket?: (url: string, opts: SocketOptions) => SocketLike;
 }
 
 export interface EventSocket {
   close(): void;
+  /** Use this token for future reconnect handshakes. */
+  updateToken(token: string): void;
 }
 
 // socket.io's Socket is structurally compatible with SocketLike but has wider overloads, hence the cast.
@@ -42,10 +48,16 @@ export function connectEventSocket(options: EventSocketOptions): EventSocket {
   });
   socket.on('seat_update', (payload) => options.onMessage(payload as SeatUpdateMessage));
   socket.on('sales_opened', (payload) => options.onMessage(payload as SalesOpenedMessage));
+  socket.on('disconnect', (reason) => {
+    if (reason === 'io server disconnect') options.onServerDisconnect?.();
+  });
 
   return {
     close() {
       socket.disconnect();
+    },
+    updateToken(token: string) {
+      socket.auth = { token };
     },
   };
 }
