@@ -53,13 +53,16 @@ describe('EventDetailView socket lifecycle', () => {
   async function setup(token: string | null) {
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [{ path: '/events/:id', component: EventDetailView }],
+      routes: [
+        { path: '/events/:id', component: EventDetailView },
+        { path: '/login', component: { template: '<div>login</div>' } },
+      ],
     });
     await router.push('/events/e1');
     const pinia = createTestingPinia({ stubActions: false });
     if (token) useAuthStore(pinia).accessToken = token;
     const wrapper = mount(EventDetailView, { global: { plugins: [router, pinia] } });
-    return wrapper;
+    return { wrapper, router };
   }
 
   beforeEach(() => {
@@ -76,7 +79,7 @@ describe('EventDetailView socket lifecycle', () => {
   });
 
   it('opens one socket when authenticated and closes it on unmount', async () => {
-    const wrapper = await setup('h.e30.s');
+    const { wrapper } = await setup('h.e30.s');
     await flushPromises();
     expect(connectEventSocket).toHaveBeenCalledTimes(1);
     expect(connectEventSocket).toHaveBeenCalledWith(
@@ -89,11 +92,35 @@ describe('EventDetailView socket lifecycle', () => {
   it('never opens a socket after unmount, even if the load resolves late', async () => {
     let resolve!: (d: EventDetail) => void;
     vi.mocked(eventsApi.get).mockReturnValue(new Promise<EventDetail>((r) => (resolve = r)));
-    const wrapper = await setup('h.e30.s');
+    const { wrapper } = await setup('h.e30.s');
     wrapper.unmount();
     resolve(detail);
     await flushPromises();
     expect(connectEventSocket).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigating away does not reload or reconnect', async () => {
+    const { router } = await setup('h.e30.s');
+    await flushPromises();
+    expect(eventsApi.get).toHaveBeenCalledTimes(1);
+    expect(connectEventSocket).toHaveBeenCalledTimes(1);
+
+    await router.push('/login');
+    await flushPromises();
+    expect(eventsApi.get).toHaveBeenCalledTimes(1);
+    expect(connectEventSocket).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigating to another event reloads and rejoins', async () => {
+    const { router } = await setup('h.e30.s');
+    await flushPromises();
+
+    await router.push('/events/e2');
+    await flushPromises();
+    expect(eventsApi.get).toHaveBeenLastCalledWith('e2');
+    expect(connectEventSocket).toHaveBeenCalledTimes(2);
+    expect(connectEventSocket).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: 'e2' }));
     expect(close).toHaveBeenCalledTimes(1);
   });
 });

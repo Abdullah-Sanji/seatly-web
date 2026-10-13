@@ -60,10 +60,11 @@ watch(
 );
 
 // Vue Router reuses this component across /events/a -> /events/b.
-watch(eventId, async () => {
+watch(eventId, async (id) => {
+  if (unmounted || !route.params.id) return; // leaving the page: the route changes before unmount
   map.reset();
   openSocket();
-  await map.load(eventId.value);
+  await map.load(id);
 });
 
 onBeforeUnmount(() => {
