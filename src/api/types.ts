@@ -1,60 +1,21 @@
-export type EventStatus = 'upcoming' | 'on_sale' | 'closed';
-export type SeatState = 'available' | 'held' | 'held_by_me' | 'sold';
+/**
+ * API types are generated from the backend contract (seatly-api/contracts/openapi.yaml)
+ * by `pnpm api:types`. Do not hand-edit shapes here: change the contract, regenerate.
+ * This module only gives the generated schemas their familiar names.
+ */
+import type { components } from './generated/openapi';
 
-export interface SeatView {
-  id: string;
-  rowLabel: string;
-  seatNumber: number;
-  priceCents: number;
-  state: SeatState;
-}
+type Schemas = components['schemas'];
 
-export interface EventSummary {
-  id: string;
-  name: string;
-  venueName: string;
-  startsAt: string;
-  salesOpenAt: string;
-  status: EventStatus;
-  availableCount: number;
-}
-
-export interface EventDetail extends EventSummary {
-  seats: SeatView[];
-}
-
-export interface HoldResponse {
-  seatId: string;
-  expiresAt: string;
-}
-
-export interface BookingResult {
-  bookingId: string;
-  seatIds: string[];
-  totalCents: number;
-}
-
-export interface MyBooking {
-  id: string;
-  eventName: string;
-  seats: { rowLabel: string; seatNumber: number }[];
-  totalCents: number;
-  createdAt: string;
-}
-
-export interface SeatUpdateMessage {
-  type: 'held' | 'released' | 'sold';
-  seatIds: string[];
-  expiresAt?: string;
-}
-
-export interface SalesOpenedMessage {
-  type: 'sales_opened';
-}
-
-export interface ErrorBody {
-  statusCode: number;
-  code: string;
-  message: string;
-  details: Record<string, unknown>;
-}
+export type EventStatus = Schemas['EventStatus'];
+export type SeatState = Schemas['SeatState'];
+export type SeatView = Schemas['SeatView'];
+export type EventSummary = Schemas['EventSummary'];
+export type EventDetail = Schemas['EventDetail'];
+export type HoldResponse = Schemas['HoldResponse'];
+export type BookingResult = Schemas['BookingResult'];
+export type MyBooking = Schemas['MyBooking'];
+export type SeatUpdateMessage = Schemas['SeatUpdateMessage'];
+export type SalesOpenedMessage = Schemas['SalesOpenedMessage'];
+export type ErrorBody = Schemas['ErrorBody'];
+export type ApiErrorCode = Schemas['ErrorCode'];

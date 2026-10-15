@@ -1,26 +1,8 @@
 import { isAxiosError } from 'axios';
-import { ErrorBody } from './types';
+import { ApiErrorCode, ErrorBody } from './types';
 
-export type ErrorCode =
-  | 'VALIDATION_FAILED'
-  | 'UNAUTHORIZED'
-  | 'FORBIDDEN'
-  | 'NOT_FOUND'
-  | 'REQUEST_FAILED'
-  | 'REFRESH_INVALID'
-  | 'RATE_LIMITED'
-  | 'EMAIL_TAKEN'
-  | 'EVENT_NOT_FOUND'
-  | 'SEAT_NOT_FOUND'
-  | 'SALES_NOT_OPEN'
-  | 'SEAT_SOLD'
-  | 'SEAT_HELD'
-  | 'HOLD_LIMIT_REACHED'
-  | 'NOT_HOLDER'
-  | 'NO_HELD_SEATS'
-  | 'HOLD_EXPIRED'
-  | 'INTERNAL'
-  | 'NETWORK';
+/** Codes the API can return (from the contract) plus the client-only NETWORK code. */
+export type ErrorCode = ApiErrorCode | 'NETWORK';
 
 export class ApiError extends Error {
   constructor(
