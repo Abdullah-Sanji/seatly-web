@@ -82,7 +82,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List events ordered by start date */
+        /**
+         * List events ordered by start date, optionally filtered by a search term
+         * @description Public. Returns events ordered by `startsAt` ascending. When `q` is non-empty, only events whose `name` or `venueName` contains `q` as a case-insensitive literal substring are returned (`%` and `_` are not wildcards). An absent or empty `q` returns the full list.
+         */
         get: operations["listEvents"];
         put?: never;
         post?: never;
@@ -529,20 +532,60 @@ export interface operations {
     };
     listEvents: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Case-insensitive substring matched against event name and venue name. Empty means no filter. More than 100 characters is rejected with 400 VALIDATION_FAILED.
+                 * @example jazz
+                 */
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description All events, soonest first. */
+            /** @description Matching events (all events when `q` is absent or empty), soonest first. Empty array when nothing matches. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example [
+                     *       {
+                     *         "id": "3f1c2a9e-7b4d-4e8a-9c21-5d6f7a8b9c01",
+                     *         "name": "Riyadh Jazz Night",
+                     *         "venueName": "King Fahd Cultural Centre",
+                     *         "startsAt": "2026-11-20T18:00:00.000Z",
+                     *         "salesOpenAt": "2026-10-01T09:00:00.000Z",
+                     *         "status": "on_sale",
+                     *         "availableCount": 42
+                     *       }
+                     *     ]
+                     */
                     "application/json": components["schemas"]["EventSummary"][];
+                };
+            };
+            /** @description VALIDATION_FAILED when `q` is longer than 100 characters. `details.errors` lists the messages. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "statusCode": 400,
+                     *       "code": "VALIDATION_FAILED",
+                     *       "message": "Validation failed",
+                     *       "details": {
+                     *         "errors": [
+                     *           "q must be shorter than or equal to 100 characters"
+                     *         ]
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };
